@@ -20,11 +20,10 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential gcc-aarch64-linux-gnu bison flex libssl-dev libelf-dev bc device-tree-compiler
 
-      - name: Kernel config rockchip64_defconfig
+      - name: Kernel config
         run: |
-          # unifreq仓库的rockchip64_defconfig在config文件夹，复制到内核config路径
-          cp config/rockchip64_defconfig arch/arm64/configs/
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- rockchip64_defconfig
+          ls -la arch/arm64/configs/
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
 
       - name: Build Image + modules + single target DTB
         run: |
