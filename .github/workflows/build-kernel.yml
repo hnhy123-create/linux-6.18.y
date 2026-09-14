@@ -1,6 +1,6 @@
 name: Build Kernel RK3399Pro AIO-3399ProC
 on:
-  workflow_dispatch: # 手动触发，网页点按钮启动编译
+  workflow_dispatch:
 
 jobs:
   build:
@@ -22,17 +22,19 @@ jobs:
 
       - name: Kernel config rockchip64_defconfig
         run: |
+          # unifreq仓库的rockchip64_defconfig在config文件夹，复制到内核config路径
+          cp config/rockchip64_defconfig arch/arm64/configs/
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- rockchip64_defconfig
 
-      - name: Build Image + DTB + modules
+      - name: Build Image + modules + single target DTB
         run: |
-          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules dtbs
-        # 会编译：Image，全部dtb（包含rk3399pro-firefly-aioc.dtb），内核模块
+          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dtb
+          ls -lh arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dtb
 
       - name: Make deb packages (modules + headers)
         run: |
           make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bindeb-pkg
-        # bindeb-pkg 直接生成deb包，放在上级目录 ../
 
       - name: Collect artifacts
         run: |
