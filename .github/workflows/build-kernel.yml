@@ -16,17 +16,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y aarch64-linux-gnu-gcc device-tree-compiler flex bison libssl-dev libelf-dev
+          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu device-tree-compiler flex bison libssl-dev libelf-dev
 
-      - name: Try fetch PR #36 (patch for typec)
+      - name: Fetch upstream unifreq PR#36 patch
         run: |
           set +e
-          git fetch origin pull/36/head:pr36
+          # 添加上游仓库 remote
+          git remote add upstream https://github.com/unifreq/linux-6.18.y.git
+          git fetch upstream pull/36/head:pr36
           if [ $? -eq 0 ];then
             git merge pr36
             echo "✅ PR#36 merged successfully"
           else
-            echo "⚠️ PR#36 not found or already merged, skip merge"
+            echo "⚠️ PR#36 not found / already merged, skip merge"
           fi
           git diff arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dts
         shell: bash
