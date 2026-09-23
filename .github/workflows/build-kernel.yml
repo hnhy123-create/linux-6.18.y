@@ -1,41 +1,47 @@
-name: Build rk3399pro-firefly-aioc DTB
+name: Build Kernel+DTB rk3399pro-firefly-aioc
 on:
+  workflow_dispatch: # 手动触发，仓库Actions页面点Run workflow
   push:
-    branches: [ main ]
-  workflow_dispatch: # 手动触发，网页点Run workflow
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout linux-6.18.y
+      - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 完整拉取所有提交，才能fetch PR
 
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y aarch64-linux-gnu-gcc device-tree-compiler flex bison
+          sudo apt install -y aarch64-linux-gnu-gcc device-tree-compiler flex bison libssl-dev libelf-dev
 
-      - name: Fetch & merge PR #36
+      - name: Fetch and merge PR #36 (TypeC fusb302 drp vbus patch)
         run: |
           git fetch origin pull/36/head:pr36
           git merge pr36
-          # 校验dts是否打上补丁
+          # 打印diff确认补丁打入
           git diff arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dts
 
       - name: Generate rockchip defconfig
         run: |
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- rockchip_defconfig
+          # 【可选】如果你需要手动开启CONFIG，可追加脚本，例如：
+          # sed -i 's/# CONFIG_TYPEC_FUSB302 is not set/CONFIG_TYPEC_FUSB302=y/' .config
+          # sed -i 's/# CONFIG_USB_DWC3 is not set/CONFIG_USB_DWC3=y/' .config
+          # sed -i 's/# CONFIG_USB_ROLE_SWITCH is not set/CONFIG_USB_ROLE_SWITCH=y/' .config
 
-      - name: Compile only target dtb
+      - name: Build Image + target dtb
         run: |
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
-            arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dtb -j$(nproc)
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc) Image
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dtb
 
-      - name: Upload DTB artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rk3399pro-firefly-aioc-dtb
-          path: arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dtb
+          name: kernel-rk3399pro-aio3399c
+          path: |
+            arch/arm64/boot/Image
+            arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dtb
