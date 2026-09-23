@@ -1,6 +1,6 @@
 name: Build Kernel+DTB rk3399pro-firefly-aioc
 on:
-  workflow_dispatch: # 手动触发，仓库Actions页面点Run workflow
+  workflow_dispatch:
   push:
     branches: [main]
 
@@ -11,27 +11,34 @@ jobs:
       - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 完整拉取所有提交，才能fetch PR
+          fetch-depth: 0
 
       - name: Install build dependencies
         run: |
           sudo apt update
           sudo apt install -y aarch64-linux-gnu-gcc device-tree-compiler flex bison libssl-dev libelf-dev
 
-      - name: Fetch and merge PR #36 (TypeC fusb302 drp vbus patch)
+      - name: Try fetch PR #36 (patch for typec)
         run: |
+          set +e
           git fetch origin pull/36/head:pr36
-          git merge pr36
-          # 打印diff确认补丁打入
+          if [ $? -eq 0 ];then
+            git merge pr36
+            echo "✅ PR#36 merged successfully"
+          else
+            echo "⚠️ PR#36 not found or already merged, skip merge"
+          fi
           git diff arch/arm64/boot/dts/rockchip/rk3399pro-firefly-aioc.dts
+        shell: bash
 
       - name: Generate rockchip defconfig
         run: |
+          set -e
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- rockchip_defconfig
-          # 【可选】如果你需要手动开启CONFIG，可追加脚本，例如：
-          # sed -i 's/# CONFIG_TYPEC_FUSB302 is not set/CONFIG_TYPEC_FUSB302=y/' .config
-          # sed -i 's/# CONFIG_USB_DWC3 is not set/CONFIG_USB_DWC3=y/' .config
-          # sed -i 's/# CONFIG_USB_ROLE_SWITCH is not set/CONFIG_USB_ROLE_SWITCH=y/' .config
+          # 开启USB TypeC相关驱动
+          sed -i 's/# CONFIG_TYPEC_FUSB302 is not set/CONFIG_TYPEC_FUSB302=y/' .config
+          sed -i 's/# CONFIG_USB_DWC3 is not set/CONFIG_USB_DWC3=y/' .config
+          sed -i 's/# CONFIG_USB_ROLE_SWITCH is not set/CONFIG_USB_ROLE_SWITCH=y/' .config
 
       - name: Build Image + target dtb
         run: |
